@@ -14,31 +14,49 @@ namespace WindowsFormsApplication1
         Color colorCurrentBox = Color.Gray;
         private int stepWidth = 0;
         private int stepHeight = 0;
-        enum mode
+        enum Mode
         {
             fill,
             click
         };
-        private mode currentMode = mode.click;
-        
-        public int cellCount
+        private Mode currentMode = Mode.click;
+        public int CellCount
         {
             get
             {
-                int x = Convert.ToInt32(numericUpDown1.Value);
-                int y = Convert.ToInt32(numericUpDown2.Value);
+                int x = Convert.ToInt32(XUpDown.Value);
+                int y = Convert.ToInt32(YUpDown.Value);
                 return x * y;
             }
         }
-        
+        public int CellWidth
+        {
+
+            get
+            {
+                int cellCountX = Convert.ToInt32(XUpDown.Value);
+                return DrawingArea.Width / cellCountX;
+            }
+        }
+        public int CellHeight
+        {
+
+            get
+            {
+                int cellCountY = Convert.ToInt32(YUpDown.Value);
+                return DrawingArea.Height / cellCountY;
+            }
+        }
+
         public Form1()
         {
             InitializeComponent();
-            updateCellLabel();
-            updateModeLabel();
+            DrawingArea.Image = new Bitmap(DrawingArea.Width, DrawingArea.Height);
+            UpdateCellLabel();
+            UpdateModeLabel();
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void ColorDialog_Click(object sender, EventArgs e)
         {
          
            colorDialog1.AllowFullOpen = false;
@@ -52,38 +70,49 @@ namespace WindowsFormsApplication1
 
 
 
-        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
             int x = Convert.ToInt32(e.X); // координата по оси X
             int y = Convert.ToInt32(e.Y); // координата по оси Y
-            label1.Text = x.ToString() + ',' + y.ToString();
+            PositionLabel.Text = x.ToString() + ',' + y.ToString();
 
         }
 
-        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
-        {    
-            Graphics g = Graphics.FromHwnd(pictureBox1.Handle);
-            g.Clear(pictureBox1.BackColor);
-            drawVertical(g);
-            drawHorizontal(g);
 
-            updateCellLabel();
-        }
-        private void numericUpDown2_ValueChanged(object sender, EventArgs e)
+
+
+        private void CellCountX_ValueChanged(object sender, EventArgs e)
         {
-            Graphics g = Graphics.FromHwnd(pictureBox1.Handle);
-            g.Clear(pictureBox1.BackColor);
-            drawHorizontal(g);
-            drawVertical(g);
-
-            updateCellLabel();
+            using (Graphics g = Graphics.FromImage(DrawingArea.Image))
+            {
+                g.Clear(DrawingArea.BackColor);
+                DrawVertical(g);
+                DrawHorizontal(g);
+            }
+            UpdateCellLabel();
+            DrawingArea.Refresh();
+        }
+        private void CellCountY_ValueChanged(object sender, EventArgs e)
+        {
+            using (Graphics g = Graphics.FromImage(DrawingArea.Image))
+            {
+                g.Clear(DrawingArea.BackColor);
+                DrawHorizontal(g);
+                DrawVertical(g);
+            }
+            UpdateCellLabel();
+            DrawingArea.Refresh();
         }
 
-        private void drawHorizontal(Graphics g)
+
+
+
+
+        private void DrawHorizontal(Graphics g)
         {
-            int boxWidth = pictureBox1.Width;
-            int boxHeight = pictureBox1.Height;
-            int boxStepHeight = Convert.ToInt32(numericUpDown2.Value);
+            int boxWidth = DrawingArea.Width;
+            int boxHeight = DrawingArea.Height;
+            int boxStepHeight = Convert.ToInt32(YUpDown.Value);
             stepHeight = boxHeight / boxStepHeight;
 
             Pen myPen = new Pen(Color.Gray, 1);
@@ -91,13 +120,13 @@ namespace WindowsFormsApplication1
             {
                 g.DrawLine(myPen, 0, i * stepHeight, boxWidth, i * stepHeight);
             }
-
+         
         }
-        private void drawVertical(Graphics g)
+        private void DrawVertical(Graphics g)
         {
-            int boxWidth = pictureBox1.Width;
-            int boxHeight = pictureBox1.Height;
-            int boxStepWidth = Convert.ToInt32(numericUpDown1.Value);
+            int boxWidth = DrawingArea.Width;
+            int boxHeight = DrawingArea.Height;
+            int boxStepWidth = Convert.ToInt32(XUpDown.Value);
             stepWidth = boxWidth / boxStepWidth;
 
             Pen myPen = new Pen(Color.Gray, 1);
@@ -108,76 +137,98 @@ namespace WindowsFormsApplication1
         }
 
 
-        private void pictureBox1_MouseClick(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseClick(object sender, MouseEventArgs e)
         {
-           if(currentMode == mode.click)
+           if(currentMode == Mode.click)
             {
-                fillOne(e);
+                FillOne(e);
             }
            else
             {
-                fill(e);
+                Fill(e);
             }
         }
-
-        private void fillOne(MouseEventArgs e) 
+        private void FillOne(MouseEventArgs e) 
         {
-            Graphics g = Graphics.FromHwnd(pictureBox1.Handle);
             //SolidBrush - сплошная закраска цветом кисти;
             //TextureBrush - наложение картинки (image) на область закраски;
             //HatchBrush - закраска области предопределенным узором;
             //LinearGradientBrush - сплошная закраска c переходом цвета кисти (градиентная закраска);
             //PathGradientBrush -сплошная закраска c переходом цвета кисти по специальному алгоритму.
-            SolidBrush myBrush = new SolidBrush(colorCurrentBox);
-
-
-            int boxWidth = pictureBox1.Width;
-            int boxHeight = pictureBox1.Height;
-
-            int boxStepWidth = Convert.ToInt32(numericUpDown1.Value);
-            int stepWidth = boxWidth / boxStepWidth;
-
-            int boxStepHeight = Convert.ToInt32(numericUpDown2.Value);
-            int stepHeight = boxHeight / boxStepHeight;
-
             int x = Convert.ToInt32(e.X); // координата по оси X
-            int y = Convert.ToInt32(e.Y); // координата по оси Y           
+            int y = Convert.ToInt32(e.Y); // координата по оси Y
+            var pixelColor = PixelColor(x, y);
+            SolidBrush myBrush;
+            if (!isAlreadyFilled(x, y, colorCurrentBox))
+                myBrush = new SolidBrush(colorCurrentBox);
+            else
+                myBrush = new SolidBrush(DrawingArea.BackColor);
 
 
-            x = x / stepWidth;
-            y = y / stepHeight;
-            g.FillRectangle(myBrush, x * stepWidth, y * stepHeight, stepWidth, stepHeight);
-        }
 
-        private void fill(MouseEventArgs e)
-        {
+            x = x / CellWidth;
+            y = y / CellHeight;
 
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            currentMode = mode.fill;
-            updateModeLabel();
-        }
-
-        private void button3_Click(object sender, EventArgs e)
-        {
-            currentMode = mode.click;
-            updateModeLabel();
-        }
-
-        private void label5_Click(object sender, EventArgs e)
-        {
+            using (Graphics g = Graphics.FromImage(DrawingArea.Image))
+            {
+                g.FillRectangle(myBrush, x * CellWidth, y * CellHeight, CellWidth, CellHeight);
+            }
+            DrawingArea.Refresh();
 
         }
+        private void Fill(MouseEventArgs e)
+        {
+            Stack<MouseEventArgs> stack = new Stack<MouseEventArgs>();
+            stack.Push(e);
 
-        private void updateModeLabel()
-        {
-            label5.Text = "Current mode is " + (currentMode == mode.click ? "fillOne" : "fill");
+            while(stack.Count != 0)
+            {
+                var cell = stack.Pop();
+                FillOne(cell);
+            }
         }
-        private void updateCellLabel()
+
+
+
+
+        private void FillModeButton_Click(object sender, EventArgs e)
         {
-            label2.Text = "Cell count = " + cellCount;
+            currentMode = Mode.fill;
+            UpdateModeLabel();
+        }
+        private void FillOneModeButton_Click(object sender, EventArgs e)
+        {
+            currentMode = Mode.click;
+            UpdateModeLabel();
+        }
+
+      
+
+        private void UpdateModeLabel()
+        {
+            FillLabel.Text = "Current mode is " + (currentMode == Mode.click ? "fillOne" : "fill");
+        }
+        private void UpdateCellLabel()
+        {
+            CellCountLabel.Text = "Cell count = " + CellCount;
+        }
+
+        private int PixelColor(int x, int y)
+        {
+            Bitmap bitmap = DrawingArea.Image as Bitmap;
+            Color c = bitmap.GetPixel(x, y);
+            return c.ToArgb();
+        }
+        private bool isAlreadyFilled(int x, int y, Color color)
+        {
+            Bitmap bitmap = DrawingArea.Image as Bitmap;
+
+            Color colour = bitmap.GetPixel(x, y);
+            bool answer = colour.ToArgb() == color.ToArgb();
+            colour.ToArgb
+            Console.WriteLine($"({x}, {y}) {answer} oldColor: {colour}, newColor: {color}");
+
+            return answer;
         }
     }
 }
