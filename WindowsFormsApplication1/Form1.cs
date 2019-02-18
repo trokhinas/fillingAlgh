@@ -16,10 +16,10 @@ namespace WindowsFormsApplication1
         private int stepHeight = 0;
         enum Mode
         {
-            fill,
-            click
+            Fill,
+            FillCell
         };
-        private Mode currentMode = Mode.click;
+        private Mode currentMode = Mode.FillCell;
         public int CellCount
         {
             get
@@ -139,17 +139,20 @@ namespace WindowsFormsApplication1
 
         private void PictureBox1_MouseClick(object sender, MouseEventArgs e)
         {
-           if(currentMode == Mode.click)
+           var point = new Point(e.X, e.Y);
+           if(currentMode == Mode.FillCell)
             {
-                FillOne(e);
+                FillOne(point);
             }
            else
             {
-                Fill(e);
+                Fill(point);
             }
         }
-        private void FillOne(MouseEventArgs e) 
+        private void FillOne(Point e) 
         {
+            if (!IsPointInArea(e))
+                return;
             //SolidBrush - сплошная закраска цветом кисти;
             //TextureBrush - наложение картинки (image) на область закраски;
             //HatchBrush - закраска области предопределенным узором;
@@ -159,12 +162,8 @@ namespace WindowsFormsApplication1
             int y = Convert.ToInt32(e.Y); // координата по оси Y
             var pixelColor = PixelColor(x, y);
             SolidBrush myBrush;
-            if (!isAlreadyFilled(x, y, colorCurrentBox))
                 myBrush = new SolidBrush(colorCurrentBox);
-            else
-                myBrush = new SolidBrush(DrawingArea.BackColor);
-
-
+           
 
             x = x / CellWidth;
             y = y / CellHeight;
@@ -176,15 +175,25 @@ namespace WindowsFormsApplication1
             DrawingArea.Refresh();
 
         }
-        private void Fill(MouseEventArgs e)
+        private void Fill(Point point)
         {
-            Stack<MouseEventArgs> stack = new Stack<MouseEventArgs>();
-            stack.Push(e);
+            Stack<Point> stack = new Stack<Point>();
+            stack.Push(point);
+            int startColor = PixelColor(point.X, point.Y);
 
             while(stack.Count != 0)
             {
                 var cell = stack.Pop();
-                FillOne(cell);
+                if (!IsPointInArea(cell))
+                    continue;
+                if(!IsAlreadyFilled(cell) && startColor == PixelColor(cell))
+                {
+                    FillOne(cell);
+                    stack.Push(new Point(cell.X, cell.Y - CellHeight));
+                    stack.Push(new Point(cell.X, cell.Y + CellHeight));
+                    stack.Push(new Point(cell.X + CellWidth, cell.Y));
+                    stack.Push(new Point(cell.X - CellWidth, cell.Y));
+                }
             }
         }
 
@@ -193,12 +202,12 @@ namespace WindowsFormsApplication1
 
         private void FillModeButton_Click(object sender, EventArgs e)
         {
-            currentMode = Mode.fill;
+            currentMode = Mode.Fill;
             UpdateModeLabel();
         }
         private void FillOneModeButton_Click(object sender, EventArgs e)
         {
-            currentMode = Mode.click;
+            currentMode = Mode.FillCell;
             UpdateModeLabel();
         }
 
@@ -206,29 +215,60 @@ namespace WindowsFormsApplication1
 
         private void UpdateModeLabel()
         {
-            FillLabel.Text = "Current mode is " + (currentMode == Mode.click ? "fillOne" : "fill");
+            FillLabel.Text = "Current mode is " + currentMode.ToString();
         }
         private void UpdateCellLabel()
         {
             CellCountLabel.Text = "Cell count = " + CellCount;
         }
 
+        private int PixelColor(Point point)
+        {
+            return PixelColor(point.X, point.Y);
+        }
         private int PixelColor(int x, int y)
         {
             Bitmap bitmap = DrawingArea.Image as Bitmap;
             Color c = bitmap.GetPixel(x, y);
             return c.ToArgb();
         }
-        private bool isAlreadyFilled(int x, int y, Color color)
+        private bool IsAlreadyFilled(int x, int y, Color color)
         {
             Bitmap bitmap = DrawingArea.Image as Bitmap;
 
             Color colour = bitmap.GetPixel(x, y);
             bool answer = colour.ToArgb() == color.ToArgb();
-            colour.ToArgb
             Console.WriteLine($"({x}, {y}) {answer} oldColor: {colour}, newColor: {color}");
 
             return answer;
+        }
+        private bool IsAlreadyFilled(Point point, Color color)
+        {
+            return IsAlreadyFilled(point.X, point.Y, color);
+        }
+        private bool IsAlreadyFilled(int x, int y)
+        {
+            Bitmap bitmap = DrawingArea.Image as Bitmap;
+
+            Color colour = bitmap.GetPixel(x, y);
+            bool answer = colour.ToArgb() == colorCurrentBox.ToArgb();
+            Console.WriteLine($"({x}, {y}) {answer} oldColor: {colour}, newColor: {colorCurrentBox}");
+
+            return answer;
+        }
+        private bool IsAlreadyFilled(Point point)
+        {
+            return IsAlreadyFilled(point.X, point.Y);
+        }
+
+
+        private bool IsPointInArea(int x, int y)
+        {
+            return x >= 0 && y >= 0 && x <= DrawingArea.Width && y <= DrawingArea.Height;
+        }
+        private bool IsPointInArea(Point point)
+        {
+            return IsPointInArea(point.X, point.Y);
         }
     }
 }
