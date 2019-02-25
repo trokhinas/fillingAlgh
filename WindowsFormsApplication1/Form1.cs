@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Text;
+using System.Threading;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 
 namespace WindowsFormsApplication1
 {
@@ -18,7 +16,7 @@ namespace WindowsFormsApplication1
         {
             Fill,
             FillCell
-        };
+        }
         private Mode currentMode = Mode.FillCell;
         public int CellCount
         {
@@ -158,11 +156,10 @@ namespace WindowsFormsApplication1
             //HatchBrush - закраска области предопределенным узором;
             //LinearGradientBrush - сплошная закраска c переходом цвета кисти (градиентная закраска);
             //PathGradientBrush -сплошная закраска c переходом цвета кисти по специальному алгоритму.
-            int x = Convert.ToInt32(e.X); // координата по оси X
-            int y = Convert.ToInt32(e.Y); // координата по оси Y
+            var x = Convert.ToInt32(e.X); // координата по оси X
+            var y = Convert.ToInt32(e.Y); // координата по оси Y
             var pixelColor = PixelColor(x, y);
-            SolidBrush myBrush;
-                myBrush = new SolidBrush(colorCurrentBox);
+            var myBrush = new SolidBrush(colorCurrentBox);
            
 
             x = x / CellWidth;
@@ -175,20 +172,24 @@ namespace WindowsFormsApplication1
             DrawingArea.Refresh();
 
         }
-        private void Fill(Point point)
+        private async void Fill(Point point)
         {
             Stack<Point> stack = new Stack<Point>();
             stack.Push(point);
             int startColor = PixelColor(point.X, point.Y);
+            
+            
 
-            while(stack.Count != 0)
+            while(stack.Count != 0)     
             {
                 var cell = stack.Pop();
+               
                 if (!IsPointInArea(cell))
                     continue;
                 if(!IsAlreadyFilled(cell) && startColor == PixelColor(cell))
                 {
                     FillOne(cell);
+                    await Task.Run(() => { Thread.Sleep(500); });
                     stack.Push(new Point(cell.X, cell.Y - CellHeight));
                     stack.Push(new Point(cell.X, cell.Y + CellHeight));
                     stack.Push(new Point(cell.X + CellWidth, cell.Y));
@@ -238,7 +239,7 @@ namespace WindowsFormsApplication1
 
             Color colour = bitmap.GetPixel(x, y);
             bool answer = colour.ToArgb() == color.ToArgb();
-            Console.WriteLine($"({x}, {y}) {answer} oldColor: {colour}, newColor: {color}");
+            Console.WriteLine($@"({x}, {y}) {answer} oldColor: {colour}, newColor: {color}");
 
             return answer;
         }
@@ -252,7 +253,7 @@ namespace WindowsFormsApplication1
 
             Color colour = bitmap.GetPixel(x, y);
             bool answer = colour.ToArgb() == colorCurrentBox.ToArgb();
-            Console.WriteLine($"({x}, {y}) {answer} oldColor: {colour}, newColor: {colorCurrentBox}");
+            Console.WriteLine($@"({x}, {y}) {answer} oldColor: {colour}, newColor: {colorCurrentBox}");
 
             return answer;
         }
